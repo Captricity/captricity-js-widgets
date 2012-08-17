@@ -1,0 +1,143 @@
+<html>
+    <head>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+        <script src="http://ajax.aspnetcdn.com/ajax/jquery.ui/1.8.20/jquery-ui.min.js"></script>
+        <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.3.3/underscore-min.js"></script>
+        <script src="http://cdnjs.cloudflare.com/ajax/libs/backbone.js/0.9.2/backbone-min.js"></script>
+        <script src="https://shreddr.captricity.com/backbone/backbone.js"></script>
+        <script src="https://shreddr.captricity.com/static/backbone/schema.js"></script>
+        <script src="https://shreddr.captricity.com/static/js/plugins.js"></script>
+
+        <script>
+            // Questions to nickj@captricity.com
+
+            /**************   SET THE TWO ITEMS BELOW   **************/
+            // This is the account's API token;  You would normally instantiate this from your DB's records.
+            var accountApiToken = 'XYZ';
+            // This is the ID of the template you want to use.
+            var templateId = -1;
+            /**************   SET THE TWO ITEMS ABOVE   **************/
+
+            captricity.endpointURL = 'https://shreddr.captricity.com/api/backbone/schema';
+            captricity.apiToken = accountApiToken;
+            window.schema = new captricity.APISchema();
+
+            $(document).ready(function() {
+                if (accountApiToken == 'XYZ' || templateId == -1) {
+                    alert("ERROR: You need to set the accountApiToken or templateId variables in the source of this file.");
+                    return;
+                }
+                // Initialize the Captricity library
+                window.schema.fetch();
+                // Bind the button functionality
+                $("#create-new-job").click(createNewJob);
+                $("#create-instance-set").click(createNewInstanceSet);
+                $("#submit-job").click(submitJob);
+            });
+
+            // Asynchronously create a job.  newJobWasCreated() is called on success.
+            function createNewJob(evt) {
+                var job = new captricity.api.Job();
+                job.save({document_id: templateId}, {success: newJobWasCreated});
+            };
+
+            // Called when a new job is successfully created.  Reveal InstanceSet button.
+            function newJobWasCreated(job, response) {
+                if (job.get('sheet_count') != 1) {
+                    alert('ERROR: this example only works with one page templates; the template you used was ' + job.get('sheet_count') + ' pages.');
+                    return;
+                }
+                window.createdJob = job
+                $("#job-results").html('"' + job.get('name') + '" (id: ' + job.id + ") was created");
+                $("#create-instance-set").css("display", "block");
+            };
+
+            // Asynchonously create a new InstanceSet.  newInstanceSetWasCreated is called on success.
+            function createNewInstanceSet(evt) {
+                if (! window.createdJob) {
+                    alert("Create a new Job first.");
+                    return;
+                }
+                var isets = new captricity.api.InstanceSets();
+                isets.id = window.createdJob.id;
+                isets.create({}, {success: newInstanceSetWasCreated});
+            };
+
+            // Called when a new InstanceSet is created.  Reveals the instance uploader widget.
+            function newInstanceSetWasCreated(iset, response) {
+                window.createdIset = iset;
+                $("#instance-set-results").html('Instance set with id ' + iset.id + ' created for "' + window.createdJob.get('name') + '"');
+                $("#create-instance").css("display", "block");
+            };
+
+            // Use the JavaScript FileReader API to upload an instance image
+            // https://developer.mozilla.org/en/DOM/FileReader
+            function createNewInstance(evt) {
+                if (! window.createdIset) {
+                    alert("Create a new InstanceSet first.");
+                    return;
+                }
+                // Create this instance to get the URL
+                var instance = new captricity.api.IsetInstance();
+                var page_number = 0;
+                var instance_name = 'page 1';
+                instance.id = window.createdIset.id;
+                instance.page = page_number;
+                // Use our (patched) MultipartUploader widget to upload the image
+                var uploader = new captricity.MultipartUploader({
+                    'image_name': instance_name, 
+                    'image': window.uploadFiles[0]}, 
+                function(f, percent){if (percent > 99) {newInstanceWasCreated();}}, instance.url());
+                patchMultipartUploader(uploader);
+            };
+
+            // Called when a new Instance is created. Allows job submission.
+            function newInstanceWasCreated() {
+                window.createdInstance = true;
+                $("#instance-set-results").html("Instance was uploaded!");
+                $("#create-instance").css("display", "none");
+                $("#submit-job").css("display", "block");
+            };
+
+            // Submit job.
+            function submitJob() {
+                if (! window.createdInstance || ! window.createdJob) {
+                    return;
+                }
+                // Ugly hack to guarantee POST
+                window.createdJob.isNew = function() {return true;};
+                // POST to submit the job
+                window.createdJob.save({'submit_job_action':true});
+            };
+
+            // MultipartUploader was not designed for third-party use.  Patch it to work.
+            function patchMultipartUploader(uploader) {
+                uploader.startUpload = function() {
+                    this.xhr.open(this.method, this.destinationURL, true);
+                    this.xhr.setRequestHeader('content-type', 'multipart/form-data; boundary=' + this.boundary);
+                    this.xhr.setRequestHeader("X_API_TOKEN", captricity.apiToken);
+                    this.xhr.setRequestHeader("X_API_VERSION", "0.1");
+                    this.xhr.sendAsBinary(this.body);
+                };
+                return uploader;
+            };
+        </script>
+    </head>
+    <body>
+        <h1>Example of Javascript job creation, instance upload, and job submission</h1>
+        <h3>Make sure you <a href="http://stackoverflow.com/a/6666092" target="_blank">use Firefox if you are viewing this page locally</a></h3>
+        <button id='create-new-job'>Create new job</button>
+        <div id='job-results'></div>
+        <br/>
+        <button style="display:none" id='create-instance-set'>Create Instance Set</button>
+        <div id='instance-set-results'></div>
+        <br/>
+        <form style="display:none;" action="." method="post" enctype="multipart/form-data" id="create-instance"> 
+            <label>Choose image to upload for instance: </label> <input type="file" id="instance-input" accept="image/*,application/pdf" onchange="window.uploadFiles=this.files; createNewInstance();"></input> 
+        </form>
+        <div id='instance-results'></div>
+        <br/>
+        <button style="display:none" id='submit-job'>Submit Job</button>
+        <div id='submit-job-results'></div>
+    </body>
+</html>
