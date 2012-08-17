@@ -19,21 +19,50 @@
             /**************   SET THE TWO ITEMS ABOVE   **************/
 
             captricity.endpointURL = 'https://shreddr.captricity.com/api/backbone/schema';
-            captricity.apiToken = accountApiToken;
             window.schema = new captricity.APISchema();
 
             $(document).ready(function() {
-                if (accountApiToken == 'XYZ' || templateId == -1) {
-                    alert("ERROR: You need to set the accountApiToken or templateId variables in the source of this file.");
-                    return;
-                }
-                // Initialize the Captricity library
-                window.schema.fetch();
                 // Bind the button functionality
+                $(document).ajaxError(function(evt, jqXHR, settings, thrown) {
+                    console.log(evt);
+                    console.log(jqXHR);
+                    console.log(settings);
+                    console.log(thrown);
+
+                });
+                $("#account-api-token-button").click(fetchAPISchema);
                 $("#create-new-job").click(createNewJob);
                 $("#create-instance-set").click(createNewInstanceSet);
                 $("#submit-job").click(submitJob);
             });
+
+            // Initializes the Captricity library
+            function fetchAPISchema(evt) {
+                captricity.apiToken = $("#account-api-token").val();
+                window.schema.fetch({success:schemaWasFetched, error:genericErrorHandler});
+            }
+
+            function schemaWasFetched(schema, response) {
+                var user = new captricity.api.UserProfile();
+                user.fetch({success:usernameWasFetched, error:genericErrorHandler});
+            }
+
+            function usernameWasFetched(userProfile, response) {
+                $("#account-api-token-button").css("display", "none");
+                $("#account-api-token").css("display", "none");
+                $("#user-username").text(userProfile.get('username'));
+                $("#user-id").css("display", "block");
+                $("#create-new-job").css("display", "block");
+            }
+
+            function genericErrorHandler(schema, response) {
+                //console.log(response);
+                //console.log(schema);
+                //_.each(response, function(k,v){console.log(v);});
+                //console.log(response.error());
+                //console.log(response.statusCode());
+                //alert("Problem with resquest: " + response.message);
+            }
 
             // Asynchronously create a job.  newJobWasCreated() is called on success.
             function createNewJob(evt) {
@@ -126,7 +155,12 @@
     <body>
         <h1>Example of Javascript job creation, instance upload, and job submission</h1>
         <h3>Make sure you <a href="http://stackoverflow.com/a/6666092" target="_blank">use Firefox if you are viewing this page locally</a></h3>
-        <button id='create-new-job'>Create new job</button>
+        <input id='account-api-token' type='text' placeholder="You Account's API Token" size="50"><button id='account-api-token-button'>Access your account</button>
+        <div id='api-access-results'></div>
+        <br/>
+        <div id='user-id' style="display:none">You have accessed the API as user: <span id='user-username'></span></div>
+        <br/>
+        <button style="display:none" id='create-new-job'>Create new job</button>
         <div id='job-results'></div>
         <br/>
         <button style="display:none" id='create-instance-set'>Create Instance Set</button>
