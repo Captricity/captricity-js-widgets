@@ -86,8 +86,10 @@
                     alert('ERROR: this example only works with one page templates; the template you used was ' + job.get('sheet_count') + ' pages.');
                     return;
                 }
+                $("#template-list-div").hide();
+                $("#template-list").hide();
                 window.createdJob = job
-                $("#job-results").html('"' + job.get('name') + '" (id: ' + job.id + ") was created");
+                $("#job-results").html('"' + job.get('name') + '" (id: ' + job.id + ') was created');
                 $("#create-instance-set").show();
             };
 
@@ -146,8 +148,14 @@
                 // Ugly hack to guarantee POST
                 window.createdJob.isNew = function() {return true;};
                 // POST to submit the job
-                window.createdJob.save({'submit_job_action':true});
+                window.createdJob.save({'submit_job_action':true}, {success: jobWasSubmitted});
             };
+
+            function jobWasSubmitted(job, response) {
+                $("#submit-job").hide();
+                $("#submit-job-results").text("Job was submitted!");
+                $("#submit-job-results").show();
+            }
 
             // MultipartUploader was not designed for third-party use.  Patch it to work.
             function patchMultipartUploader(uploader) {
@@ -163,14 +171,21 @@
         </script>
     </head>
     <body>
-        <h1>Example of Javascript job creation, instance upload, and job submission</h1>
-        <h3>Make sure you <a href="http://stackoverflow.com/a/6666092" target="_blank">use Firefox if you are viewing this page locally</a></h3>
+        <h1>Captricity JavaScript Widgets</h1>
+        <p>JavaScript examples of:
+            <ul>
+                <li>Job creation</li>
+                <li>Instance Upload</li>
+                <li>Job submission</li>
+            </ul>
+            Make sure you <a href="http://stackoverflow.com/a/6666092" target="_blank">use Firefox if you are viewing this page locally</a>
+            </p>
         <input id='account-api-token' type='text' placeholder="You Account's API Token" size="50"><button id='account-api-token-button'>Access your account</button>
         <div id='api-access-results'></div>
         <br/>
         <div id='user-id' style="display:none">You have accessed the API as user: <span id='user-username'></span></div>
         <br/>
-        <div id='template-list-div' style="display:none">Choose a template to create a new job (only 1 page templates are supported in this example):
+        <div id='template-list-div' style="display:none">Choose a template to create a new job (only 1 page templates are supported in this example):</div>
         <ul id='template-list'></ul>
         <br/>
         <div id='job-results'></div>
