@@ -1,4 +1,4 @@
-Captricit JavaScript Widgets
+Captricity JavaScript Widgets
 =====================
 
 This is a barebones single-page example of a set of JavaScript widgets that
