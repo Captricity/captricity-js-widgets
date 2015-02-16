@@ -9,7 +9,6 @@
         <script src="https://shreddr.captricity.com/static/js/plugins.js"></script>
 
         <script>
-            // Questions to nickj@captricity.com
             captricity.endpointURL = 'https://shreddr.captricity.com/api/backbone/schema';
             window.schema = new captricity.APISchema();
 
@@ -20,7 +19,7 @@
                 });
                 // Bind the button functionality
                 $("#account-api-token-button").click(fetchAPISchema);
-                $("#create-batch-page").click(createNewBatchPage);
+                $("#create-batch-file").click(createNewBatchPage);
                 $("#submit-batch").click(submitBatch);
             });
 
@@ -49,7 +48,7 @@
             }
 
             // Now that the Documents are fetched, list them out so you
-            // can select one to use for a new job.
+            // can select one to use for a new Batch.
             function docsWereFetched(docs, response) {
                 $("#template-list-div").show();
                 for (var i = 0; i < docs.length; i++) {
@@ -67,48 +66,34 @@
 
             // Wrapper so doc is properly closed over in the for-loop
             function createNewBatchWithDocWrapper(doc) {
-                // Asynchronously creates a new job using the chosen document template.
+                // Asynchronously creates a new batch using the chosen document template.
                 var createNewBatchWithDoc = function(evt) {
                     evt.preventDefault();
-                    /*
-                    if (doc.get('sheet_count') ==  1) {
-                        var job = new captricity.api.Job();
-                        job.save({document_id: doc.id}, {success: newJobWasCreated});
-                    } else {
-                        alert('Multi-page documents are not supported in this example! Please choose another.');
-                    }*/
                     var batch = new captricity.api.Batch();
                     batch.save({name:'test',  document_id: doc.id}, {success: newBatchWasCreated});
                 };
                 return createNewBatchWithDoc
             }
 
-            // Called when a new job is successfully created.  Reveal InstanceSet button.
+            // Called when a new batch is successfully created.  Reveal BatchPage button.
             function newBatchWasCreated(batch, response) {
-                /*if (job.get('sheet_count') != 1) {
-                    alert('ERROR: this example only works with one page templates; the template you used was ' + job.get('sheet_count') + ' pages.');
-                    return;
-                }*/
                 $("#template-list-div").hide();
                 $("#template-list").hide();
                 window.createdBatch = batch
                 $("#batch-results").html('Batch: "' + batch.get('name') + '" (id: ' + batch.id + ') was created');
-                $("#create-batch-page").show();
+                $("#create-batch-file").show();
             };
 
-            // Asynchonously create a new InstanceSet.  newInstanceSetWasCreated is called on success.
+            // Asynchonously create a new BatchPage.  newInstanceSetWasCreated is called on success.
             function createNewBatchPage(evt) {
                 if (! window.createdBatch) {
                     alert("Create a new Batch first.");
                     return;
                 }
-                //var batch_page = new captricity.api.BatchPages();
-                //batch_page.id = window.createdBatch.id;
-                //batch_page.create({}, {success: newBatchPageWasCreated});
-                $("#upload-batch-page").show();
+                $("#upload-batch-file").show();
             };
 
-            // Called when a new InstanceSet is created.  Reveals the instance uploader widget.
+            // Called when a new BatchFile is created.  Reveals the uploader widget.
             function newBatchFileWasCreated() {
                 $("#batch-file-results").html("Batch file was uploaded!");
                 $("#create-batch-file").show();
@@ -116,14 +101,8 @@
                 batchReadyForProcessing();
             };
 
-            // Use the JavaScript FileReader API to upload an instance image
-            // https://developer.mozilla.org/en/DOM/FileReader
             function createNewBatchFile(evt) {
-                /*if (! window.createdIset) {
-                    alert("Create a new InstanceSet first.");
-                    return;
-                }*/
-                // Create this instance to get the URL
+                // Create this instance to get the BatchFiles URL for the uploader
                 var batch_files = new captricity.api.BatchFiles();
                 batch_files.batch_id = createdBatch.id;
 
@@ -134,12 +113,11 @@
                 function(f, percent){if (percent > 99) {newBatchFileWasCreated();}}, batch_files.url());
             };
 
-            // Called when a new Instance is created. Allows job submission.
+            // Called when a new BatchFile is created. Allows batch submission.
             function batchReadyForProcessing() {
                 $("#submit-batch").show();
             };
 
-            // Submit job.
             function submitBatch() {
                 if (! window.createdBatchFile || ! window.createdBatch) {
                     return;
@@ -154,17 +132,6 @@
                 $("#submit-batch-results").show();
             }
 
-            // MultipartUploader was not designed for third-party use.  Patch it to work.
-            function patchMultipartUploader(uploader) {
-                uploader.startUpload = function() {
-                    this.xhr.open(this.method, this.destinationURL, true);
-                    this.xhr.setRequestHeader('content-type', 'multipart/form-data; boundary=' + this.boundary);
-                    this.xhr.setRequestHeader("X_API_TOKEN", captricity.apiToken);
-                    this.xhr.setRequestHeader("X_API_VERSION", "0.1");
-                    this.xhr.sendAsBinary(this.body);
-                };
-                return uploader;
-            };
         </script>
     </head>
     <body>
@@ -175,7 +142,7 @@
                 <li>Batch File Upload</li>
                 <li>Batch submission</li>
             </ul>
-            Make sure you <a href="http://stackoverflow.com/a/6666092" target="_blank">use Firefox if you are viewing this page locally</a>
+            Make sure you <a href="http://stackoverflow.com/a/6666092" target="_blank">use Firefox if you are viewing this file locally</a>
             </p>
         <input id='account-api-token' type='text' placeholder="You Account's API Token" size="50"><button id='account-api-token-button'>Access your account</button>
         <div id='api-access-results'></div>
@@ -187,10 +154,10 @@
         <br/>
         <div id='batch-results'></div>
         <br/>
-        <button style="display:none" id='create-batch-page'>Create Batch Page</button>
+        <button style="display:none" id='create-batch-file'>Create Batch Page</button>
         <div id='batch-file-results'></div>
         <br/>
-        <form style="display:none;" action="." method="post" enctype="multipart/form-data" id="upload-batch-page">
+        <form style="display:none;" action="." method="post" enctype="multipart/form-data" id="upload-batch-file">
             <label>Choose image to upload for instance: </label> <input type="file" id="batch-file-input" accept="image/*,application/pdf" onchange="window.uploadFiles=this.files; createNewBatchFile();"></input>
         </form>
         <br/>
